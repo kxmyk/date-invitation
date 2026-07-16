@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasValidFields(data) {
+      return data.keys().hasAll([
+          'dateTime',
+          'foodType',
+          'customFood',
+          'place',
+          'message',
+          'surpriseMe',
+          'status',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'dateTime',
+          'foodType',
+          'customFood',
+          'place',
+          'message',
+          'surpriseMe',
+          'status',
+          'createdAt'
+        ]);
+    }
+
+    function hasValidTypes(data) {
+      return data.dateTime is timestamp &&
+        data.foodType is string &&
+        data.customFood is string &&
+        data.place is string &&
+        data.message is string &&
+        data.surpriseMe is bool &&
+        data.status is string &&
+        data.createdAt is timestamp;
+    }
+
+    function hasValidValues(data) {
+      return data.dateTime > request.time &&
+        data.foodType in [
+          'italian',
+          'sushi',
+          'burgers',
+          'asian',
+          'mexican',
+          'brunch',
+          'dessert',
+          'custom'
+        ] &&
+        data.customFood.size() <= 80 &&
+        data.place.size() <= 120 &&
+        data.message.size() <= 300 &&
+        data.status == 'planned' &&
+        data.createdAt == request.time &&
+        (data.foodType != 'custom' || data.customFood.size() > 0);
+    }
+
+    match /dates/{dateId} {
+      allow list: if request.query.limit <= 50;
+      allow get: if true;
+      allow create: if hasValidFields(request.resource.data) &&
+        hasValidTypes(request.resource.data) &&
+        hasValidValues(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}
